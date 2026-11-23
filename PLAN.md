@@ -150,3 +150,16 @@ Phase 1 asks for a **proposal, a working prototype and a code repo URL**. Make s
 - Write intermediate outputs to `data/processed/`, never commit data.
 - Small commits on feature branches; merge to `main` when it runs.
 - Any assumed number (capacity, uplift, thresholds) lives in `crowding/config.py`, not inline.
+
+## 9. Phase status (one branch per phase)
+
+| Phase | Branch | Status |
+|---|---|---|
+| 1. GTFS loading + ticket-to-GTFS mapping | `phase-1-gtfs-mapping` | Done: `python scripts/build_gtfs_tables.py` (98% of tickets on GTFS routes; 91% of ticket stops matched within their route) |
+| 2. Crowding model on GTFS stop order (WP1) | | Next |
+| 3. Validation (WP2) | | |
+| 4. API (WP4) | | |
+| 5. Planner + UI (WP5, WP6) | | |
+| 6. Note + packaging (WP7, WP8) | | |
+
+GTFS facts learned in phase 1: ticket `route` equals GTFS `route_short_name`; there is no `direction_id` (UP/DOWN are separate routes); `calendar.txt` has one service for every day, so scheduled frequency does not differ by weekday/weekend; GTFS names often join variants with " / " while tickets use one part, so matching uses segments and prefixes.
