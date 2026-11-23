@@ -45,6 +45,8 @@ unzip October-Delhi.csv.zip -d data/raw/        # CSV is gitignored
 python run_pipeline.py data/raw/October-Delhi.csv
 ```
 
+After the pipeline setup, check the GTFS data as described in WP3 (`python scripts/check_gtfs.py`) and paste its output to the team.
+
 Data files and `*.zip`/`*.csv` are gitignored. Share them out-of-band (the zip comes from the Transport Stack download in `data_README`).
 
 ## 5. Work packages
@@ -68,7 +70,13 @@ Write `crowding/validate.py` that outputs numbers and charts for the note:
 - Where estimates are least reliable (share of low-confidence cells, by hour and by route).
 
 ### WP3: GTFS integration (A, ~2 h)
-**GTFS was received by email (sent to both teammates).** Save the files, or the single zip, in `data/gtfs/` (gitignored; do not commit). Then run `python scripts/check_gtfs.py`, which lists which files are present and how well ticket routes and stop names match the feed. Paste its output into the team chat before starting WP3, since it decides how much fuzzy matching is needed.
+**GTFS was received by email (sent to both teammates).** Do these steps first, before any WP3 coding:
+
+1. Save the files, or the single zip, in `data/gtfs/` (gitignored; do not commit).
+2. Make sure the ticket CSV is at `data/raw/October-Delhi.csv` (see Setup), so the script can also compare ticket routes and stop names with the feed.
+3. Run `python scripts/check_gtfs.py`.
+4. **Paste the full output into the team chat (or send it to the other teammate / Claude).** It shows which files are present, row counts, column names, and how many ticket routes and stop names match GTFS. We use those match rates to decide how much fuzzy matching and route mapping WP3 needs, so the plan below may change based on it.
+5. If the script says `Missing required files`, reply on the GTFS email thread asking for the missing ones.
 
 Files: `stops.txt`, `routes.txt`, `trips.txt`, `stop_times.txt`, `calendar*.txt`, optionally `shapes.txt`.
 1. `crowding/gtfs.py` loads the feed.
