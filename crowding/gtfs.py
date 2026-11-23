@@ -88,7 +88,7 @@ def match_stops(tickets: pd.DataFrame, rs: pd.DataFrame, cutoff: float = 0.8) ->
       prefix   - one name starts with the other (both >= 5 chars)
       fuzzy    - difflib close match (ratio >= cutoff) over names and parts
     """
-    by_route = {r: _variants(set(g.stop_norm)) for r, g in rs.groupby("route_short_name")}
+    by_route = {r: _variants(sorted(set(g.stop_norm))) for r, g in rs.groupby("route_short_name")}   # sorted: ties must not depend on hash order
     names = pd.concat([tickets[["route", "start"]].rename(columns={"start": "stop"}),
                        tickets[["route", "end"]].rename(columns={"end": "stop"})])
     cnt = names.groupby(["route", "stop"]).size().rename("tickets").reset_index()

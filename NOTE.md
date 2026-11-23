@@ -84,7 +84,7 @@ Two problems found by these checks were fixed: low-volume holiday days dragging 
 
 ```bash
 pip install -r requirements.txt
-bash scripts/run_all.sh              # GTFS tables, model, validation, tests (about 3 minutes)
+bash scripts/run_all.sh              # GTFS tables, model, validation, tests (under 2 minutes)
 uvicorn api.main:app                 # http://localhost:8000/ (map, planner) and /docs (API)
 ```
 Needs `data/raw/October-Delhi.csv` and the GTFS files in `data/gtfs/`; see [README.md](README.md).

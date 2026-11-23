@@ -21,7 +21,7 @@ Python 3.13 was used (3.11+ should work). From a clean clone:
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 # put the data in place (see "Data" below), then:
-bash scripts/run_all.sh          # GTFS tables, model, validation report, tests (about 3 minutes)
+bash scripts/run_all.sh          # GTFS tables, model, validation report, tests (under 2 minutes)
 uvicorn api.main:app             # open http://localhost:8000/   (API docs at /docs)
 ```
 
