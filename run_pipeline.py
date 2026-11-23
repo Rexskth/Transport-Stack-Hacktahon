@@ -1,20 +1,12 @@
-"""Full pipeline: tickets + GTFS -> data/processed/crowding.csv.gz  (run scripts/build_gtfs_tables.py first)."""
+"""Full pipeline: tickets + GTFS -> data/processed/crowding.csv.gz."""
 import sys
-import pandas as pd
-from crowding import clean, gtfs, model
+from crowding import model, pipeline
 
 src = sys.argv[1] if len(sys.argv) > 1 else "data/raw/October-Delhi.csv"
-g = gtfs.load()
-rs = gtfs.route_stops(g)
-starts = gtfs.trip_starts(g)
-df = clean.load(src)
-match = gtfs.match_stops(df[df.route.isin(set(rs.route_short_name))], rs)
-t, stats = model.resolve_positions(df, rs, match)
-print(f"tickets placed on GTFS stop order: {stats['tickets_placed']:,}/{stats['tickets_in']:,} ({stats['share_placed']:.1%})")
-counts, rs2, base = model.stretch_counts(t, rs)
-F = model.trips_at_stretch(starts, rs2, base)
-days = {0: df[~df.is_weekend].date.nunique(), 1: df[df.is_weekend].date.nunique()}
-out = model.estimate(counts, rs2, base, F, days)
+p = pipeline.prepare(src)
+s = p["stats"]
+print(f"tickets placed on GTFS stop order: {s['tickets_placed']:,}/{s['tickets_in']:,} ({s['share_placed']:.1%})")
+out = model.estimate(p["counts"], p["rs"], p["base"], p["F"], p["days"])
 out.to_csv("data/processed/crowding.csv.gz", index=False)
 print(f"{len(out):,} route-stretch-hour cells -> data/processed/crowding.csv.gz")
 for c in ("level", "source", "confidence"):
