@@ -1,6 +1,7 @@
 """Step 1: load and clean raw ticket CSV -> data/processed/tickets.parquet-like CSV."""
 import re, sys
 import pandas as pd
+from . import config
 
 def norm_stop(s: str) -> str:
     s = s.lower().strip()
@@ -18,7 +19,7 @@ def load(path: str) -> pd.DataFrame:
     df["date"] = df.t.dt.date
     df["hour"] = df.t.dt.hour
     df["dow"] = df.t.dt.dayofweek
-    df["is_weekend"] = df.dow >= 5
+    df["is_weekend"] = (df.dow >= 5) | df.t.dt.strftime("%Y-%m-%d").isin(config.HOLIDAY_DATES)
     df["week"] = (df.t.dt.day - 1) // 7 + 1            # week 1..5 of October
     m = df.route.str.extract(r"^(.*?)(UP|DOWN)$")
     df["route_base"], df["direction"] = m[0], m[1]

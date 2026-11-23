@@ -104,7 +104,7 @@ def estimate(counts: pd.DataFrame, rs: pd.DataFrame, base: pd.Series, F: np.ndar
 
     Fx = np.broadcast_to(F[:, None, :], P.shape)
     ok = np.isfinite(rpd) & (Fx > 0)
-    rpb = np.where(ok, rpd / np.where(Fx > 0, Fx, 1), np.nan)
+    rpb = np.where(ok, rpd / np.maximum(Fx, C.MIN_TRIPS_PER_HOUR), np.nan)   # floor: thin service is unreliable
 
     ridx, wk, hour = np.nonzero(ok)
     out = pd.DataFrame({"ridx": ridx, "is_weekend": wk.astype(bool), "hour": hour,
@@ -117,8 +117,9 @@ def estimate(counts: pd.DataFrame, rs: pd.DataFrame, base: pd.Series, F: np.ndar
     out["load_factor"] = out.est_load_per_bus / C.BUS_CAPACITY
     own = np.where(out.source_code == 0, out.tickets, out.tickets_pooled)
     out["confidence"] = np.select(
-        [(out.source_code == 0) & (own >= C.CONF_HIGH), (out.source_code <= 1) & (own >= C.MIN_TICKETS_RAW)],
-        ["high", "medium"], "low")
+        [out.trips < C.MIN_TRIPS_PER_HOUR,
+         (out.source_code == 0) & (own >= C.CONF_HIGH), (out.source_code <= 1) & (own >= C.MIN_TICKETS_RAW)],
+        ["low", "high", "medium"], "low")
     r = rs.loc[out.ridx]
     nxt = rs.stop_name.shift(-1)
     out["route"] = r.route_short_name.values

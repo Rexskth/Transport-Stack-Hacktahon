@@ -157,8 +157,8 @@ Phase 1 asks for a **proposal, a working prototype and a code repo URL**. Make s
 |---|---|---|
 | 1. GTFS loading + ticket-to-GTFS mapping | `phase-1-gtfs-mapping` | Done: `python scripts/build_gtfs_tables.py` (98% of tickets on GTFS routes; 91% of ticket stops matched within their route) |
 | 2. Crowding model on GTFS stop order (WP1) | `phase-2-crowding-model` | Done: `python run_pipeline.py` -> `data/processed/crowding.csv.gz` (81% of tickets placed; 1.55M route-stretch-hour cells) |
-| 3. Validation (WP2) | | Next |
-| 4. API (WP4) | | |
+| 3. Validation (WP2) | `phase-3-validation` | Done: `python -m crowding.validate` -> `reports/validation.md` (+2 PNGs) |
+| 4. API (WP4) | | Next |
 | 5. Planner + UI (WP5, WP6) | | |
 | 6. Note + packaging (WP7, WP8) | | |
 

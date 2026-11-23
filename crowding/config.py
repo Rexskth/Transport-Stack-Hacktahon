@@ -16,3 +16,13 @@ LEVEL_NAMES = ("seats", "standing", "crowded")
 MIN_TICKETS_RAW = 20                # use the cell's own tickets at or above this
 MIN_TICKETS_POOLED = 20             # else pool hour-1..hour+1; need at least this many
 CONF_HIGH = 50
+
+# Days that behave like holidays: weekday ticket volume under 65% of the typical weekday (found in Phase 3,
+# see reports/validation.md). 2 Oct is Gandhi Jayanti; 20 Oct is likely Dussehra (not confirmed in the data).
+# They are treated as weekend-like so they do not drag down weekday estimates.
+HOLIDAY_DATES = ("2026-10-02", "2026-10-20")
+
+# Very thin scheduled service makes riders-per-bus explode (found in Phase 3: the "most crowded" routes ran
+# 1-2 scheduled buses an hour, and the GTFS schedule may undercount real buses).
+# Per-bus figures use at least this many buses, and cells below it are marked low confidence.
+MIN_TRIPS_PER_HOUR = 2
