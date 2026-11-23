@@ -4,3 +4,4 @@ data/
 __pycache__/
 .venv/
 .DS_Store
+docs/DEMO_SCRIPT.md
