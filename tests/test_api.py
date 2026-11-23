@@ -99,3 +99,17 @@ def test_journeys_no_service_late_night_is_explained(client):
     a, b = _route_stop_ids("717AUP", [0, 40])
     r = client.get("/journeys", params={"from": a, "to": b, "depart": "23:55"}).json()
     assert r["options"] == [] and r["note"]
+
+
+def test_network_hourly_shape_and_peak(client):
+    r = client.get("/network/hourly", params={"min_confidence": "medium"}).json()
+    h = r["hours"]
+    assert [x["hour"] for x in h] == list(range(24))
+    live = [x for x in h if x["cells"] > 0]
+    assert live and all(abs(x["seats_share"] + x["standing_share"] + x["crowded_share"] - 1) < 1e-6 for x in live)
+    assert client.get("/network/hourly", params={"min_confidence": "nope"}).status_code == 422
+
+
+def test_cors_allows_dev_server(client):
+    r = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"

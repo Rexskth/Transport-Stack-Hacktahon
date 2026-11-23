@@ -44,9 +44,9 @@ data/gtfs/stops.txt  routes.txt  trips.txt  stop_times.txt  calendar.txt  shapes
 | GTFS tables and stop matching | `python scripts/build_gtfs_tables.py` | `data/processed/route_stops.csv`, `trips_per_hour.csv`, `trip_starts.csv`, `stop_match.csv` |
 | Crowding model | `python run_pipeline.py` | `data/processed/crowding.csv.gz` (1.56M route-stretch-hour cells) |
 | Validation | `python -m crowding.validate` | `reports/validation.md` and charts |
-| Tests | `pytest -q` | 11 tests; skipped if processed data is missing |
+| Tests | `pytest -q` | 13 API tests; skipped if processed data is missing |
 
-Code layout: `crowding/` (clean, gtfs, model, planner, validate, config), `api/` (FastAPI), `web/` (demo page), `scripts/`, `tests/`. All assumed numbers (bus capacity, pass-holder uplift, sample rate, thresholds) are in `crowding/config.py`.
+Code layout: `crowding/` (clean, gtfs, model, planner, validate, config), `api/` (FastAPI), `frontend/` (React source), `web/` (built UI served by the API), `scripts/`, `tests/`. All assumed numbers (bus capacity, pass-holder uplift, sample rate, thresholds) are in `crowding/config.py`.
 
 ## API
 
@@ -60,15 +60,26 @@ Interactive docs at `/docs`.
 | `GET /crowding?route=717AUP&hour=18&weekend=false` | Crowding on every stretch of a route, in route order |
 | `GET /heatmap?hour=18&min_confidence=medium&by=route` | Most overloaded routes or stretches (for operators) |
 | `GET /stops?q=kashmere` | Stop search with coordinates |
+| `GET /network/hourly?weekend=false` | Share of route stretches at each level, per hour (the Network chart) |
 | `GET /journeys?from=7699&to=365&depart=18:00&prefer=comfort` | Bus journeys (direct or one transfer) with scheduled times and a crowding level. `from` and `to` are a stop_id or `lat,lon` |
 
 Levels are **relative** to the rest of the network at the same day type, not headcounts, and every cell carries a `confidence` (66% of cells are low confidence because tickets are thin; see NOTE.md).
 
-## Demo page
+## Web app (React)
 
-`http://localhost:8000/`
-- **Plan a trip:** type a stop name and pick a suggestion, or click the map twice (From, then To). Choose time, day type and Faster or More comfortable.
-- **Operators:** most crowded routes or stretches by hour, with a minimum-confidence filter. Click a row to see it on the map.
-- Shareable links: `/?from=7699&to=365&depart=18:00&prefer=comfort` and `/?tab=ops`.
+`http://localhost:8000/` is a Next.js + React + TypeScript app (Tailwind, Framer Motion, Recharts, Leaflet) that the API serves as a static build, so **running it needs only Python**. The source is in `frontend/`; the built files are committed in `web/`.
+
+- **Plan a trip:** stop search with keyboard navigation, or click the map twice (A, then B). Pick time, day type and Faster or More comfortable. Results search automatically. Each option shows a crowding gauge, a per-stretch strip of the ride, a data-quality indicator and a timeline; hover or select an option to see it on the map.
+- **Network:** a 24-hour chart of how crowded Delhi's bus network is, a play button that animates through the day, the most overloaded routes at that hour, and a profile chart for any route you select. Hotspots show on the map.
+- Light and dark themes, a draggable bottom sheet on phones, shareable links (`/?from=7699&to=365&depart=18:00&prefer=comfort`, `/?tab=network&hour=9`), and an About dialog that explains how to read the levels.
+
+Working on the UI (needs Node 20+):
+
+```bash
+cd frontend && npm install
+npm run dev          # http://localhost:3000, calls the API on :8000 (start uvicorn first)
+npm run deploy       # production build, copied into ../web (what the API serves)
+npm run e2e          # 17 browser checks in real Chrome; needs the API running, CHROME_PATH if not macOS
+```
 
 Times follow the GTFS schedule, not live traffic. The planner supports direct trips and one transfer only.
