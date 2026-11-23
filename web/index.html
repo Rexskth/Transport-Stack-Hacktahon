@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Delhi Bus Crowding Planner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#1b1f24; --muted:#5d6670; --line:#dfe3e8; --accent:#1a5fd0;
+  --on-accent:#ffffff; --seats:#1f8a4c; --seats-bg:#e3f4ea; --standing:#a86b00; --standing-bg:#fdf1d8; --crowded:#c62828; --crowded-bg:#fde6e4; --unknown:#6b7480; --unknown-bg:#eceff2;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#14171b; --panel:#1d2127; --ink:#e8ebef; --muted:#9aa4af; --line:#323944; --accent:#6ea2ff;
+  --on-accent:#0b1626; --seats:#5fd08d; --seats-bg:#173525; --standing:#f0b84a; --standing-bg:#3a2d10; --crowded:#ff8a80; --crowded-bg:#431b19; --unknown:#9aa4af; --unknown-bg:#2a3038;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0}
+nav{display:flex;gap:4px}
+nav button{border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer;font:inherit}
+nav button[aria-selected=true]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+main{display:grid;grid-template-columns:420px 1fr;height:calc(100vh - 54px - 34px)}
+#side{overflow:auto;padding:14px 16px;background:var(--panel);border-right:1px solid var(--line)}
+#map{height:100%}
+footer{height:34px;padding:6px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);background:var(--panel);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink);padding:8px;cursor:pointer;font:inherit}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent)}
+.go{margin-top:14px;width:100%;padding:10px;border:0;border-radius:8px;background:var(--accent);color:var(--on-accent);font:inherit;font-weight:600;cursor:pointer}
+.ex{margin-top:8px;font-size:13px}.ex button{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font:inherit;text-decoration:underline}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px;cursor:pointer;background:var(--bg)}
+.card[aria-current=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.card h3{margin:0;font-size:16px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.badge{display:inline-flex;gap:5px;align-items:center;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:600;white-space:nowrap}
+.b-seats{background:var(--seats-bg);color:var(--seats)}.b-standing{background:var(--standing-bg);color:var(--standing)}
+.b-crowded{background:var(--crowded-bg);color:var(--crowded)}.b-unknown{background:var(--unknown-bg);color:var(--unknown)}
+.chips{margin:8px 0 4px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-weight:600;font-size:13px}
+.meta{font-size:13px;color:var(--muted)}
+.later{font-size:12px;font-weight:600;color:var(--accent)}
+.conf{font-size:12px;color:var(--muted);margin-top:4px}
+.leg{font-size:13px;margin-top:6px;padding-left:10px;border-left:3px solid var(--line)}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+th,td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+tr.sel{background:var(--bg)}tbody tr{cursor:pointer}
+.err{margin-top:12px;padding:10px;border-radius:8px;background:var(--crowded-bg);color:var(--crowded)}
+.note{margin-top:12px;padding:10px;border-radius:8px;background:var(--unknown-bg)}
+.legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted)}
+.sw{display:inline-block;width:18px;height:4px;border-radius:2px;vertical-align:middle;margin-right:4px}
+@media (max-width:820px){main{grid-template-columns:1fr;grid-template-rows:auto 45vh;height:auto}#side{border-right:0;max-height:none}#map{height:45vh}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Delhi Bus Crowding Planner</h1>
+  <nav role="tablist">
+    <button role="tab" id="tab-plan" aria-selected="true">Plan a trip</button>
+    <button role="tab" id="tab-ops" aria-selected="false">Operators</button>
+  </nav>
+</header>
+<main>
+  <section id="side">
+    <div id="plan">
+      <label for="from">From (stop name, then pick a suggestion — or click the map)</label>
+      <input id="from" list="stops-from" autocomplete="off" placeholder="e.g. Kashmere Gate">
+      <datalist id="stops-from"></datalist>
+      <label for="to">To</label>
+      <input id="to" list="stops-to" autocomplete="off" placeholder="e.g. Saket">
+      <datalist id="stops-to"></datalist>
+      <div class="row">
+        <div><label for="depart">Leave at</label><input id="depart" type="time" value="08:30"></div>
+        <div><label for="day">Day</label><select id="day"><option value="false">Weekday</option><option value="true">Weekend / holiday</option></select></div>
+      </div>
+      <label>Prefer</label>
+      <div class="seg" id="prefer"><button data-v="fast" aria-pressed="true">Faster</button><button data-v="comfort" aria-pressed="false">More comfortable</button></div>
+      <button class="go" id="go">Find buses</button>
+      <div class="ex">Try: <button id="ex1">Badarpur Border → Vasant Kunj</button> · <button id="ex2">Kashmere Gate → Nehru Place</button></div>
+      <div class="hint" id="clickhint">Map click 1 sets From, click 2 sets To.</div>
+      <div id="results"></div>
+    </div>
+    <div id="ops" hidden>
+      <div class="row">
+        <div><label for="ohour">Hour</label><select id="ohour"></select></div>
+        <div><label for="oday">Day</label><select id="oday"><option value="false">Weekday</option><option value="true">Weekend / holiday</option></select></div>
+      </div>
+      <div class="row">
+        <div><label for="oconf">Minimum confidence</label><select id="oconf"><option>medium</option><option>high</option><option>low</option></select></div>
+        <div><label for="oby">Rank</label><select id="oby"><option value="route">Routes</option><option value="stretch">Stretches</option></select></div>
+      </div>
+      <button class="go" id="ogo">Show most crowded</button>
+      <div class="hint">Click a row to see its stretches on the map. Low-confidence cells are hidden by default.</div>
+      <div id="oresults"></div>
+    </div>
+    <div class="legend" id="legend">
+      <span><span class="sw" style="background:var(--seats)"></span>Seats available</span>
+      <span><span class="sw" style="background:var(--standing)"></span>Standing room</span>
+      <span><span class="sw" style="background:var(--crowded)"></span>Crowded</span>
+      <span><span class="sw" style="background:var(--unknown);opacity:.6"></span>No data</span>
+    </div>
+  </section>
+  <div id="map" role="application" aria-label="Map"></div>
+</main>
+<footer id="foot">Levels are relative to the rest of the network at the same day type, from October 2026 ticket data. Times follow the schedule, not live traffic.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+const LV = {seats:{t:"Seats available",i:"●"}, standing:{t:"Standing room",i:"◐"}, crowded:{t:"Crowded",i:"▲"}, unknown:{t:"Unknown",i:"?"}};
+const COL = () => { const s = getComputedStyle(document.documentElement); const g = n => s.getPropertyValue(n).trim();
+  return {seats:g("--seats"), standing:g("--standing"), crowded:g("--crowded"), unknown:g("--unknown")}; };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const badge = lv => `<span class="badge b-${lv in LV ? lv : "unknown"}">${(LV[lv]||LV.unknown).i} ${(LV[lv]||LV.unknown).t}</span>`;
+const confText = c => c === "high" ? "Based on solid data" : c === "medium" ? "Based on some data" : "Limited data — treat as a rough guess";
+
+const map = L.map("map").setView([28.62, 77.2], 11);
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 18, attribution: "© OpenStreetMap contributors"}).addTo(map);
+let layer = L.layerGroup().addTo(map), pins = L.layerGroup().addTo(map), clicks = 0;
+
+async function api(path, params) {
+  const q = new URLSearchParams(params).toString();
+  const r = await fetch(path + (q ? "?" + q : ""));
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(typeof j.detail === "string" ? j.detail : "Request failed (" + r.status + ")");
+  return j;
+}
+
+/* ---- stop search (datalist) ---- */
+const stopCache = {};
+function wire(inputId, listId) {
+  let timer;
+  $(inputId).addEventListener("input", () => {
+    clearTimeout(timer);
+    const v = $(inputId).value.trim();
+    if (v.length < 2 || /\[\w+\]$/.test(v) || /^-?\d/.test(v)) return;
+    timer = setTimeout(async () => {
+      try {
+        const r = await api("/stops", {q: v, limit: 12});
+        $(listId).innerHTML = r.stops.map(s => { const k = `${s.stop_name} [${s.stop_id}]`; stopCache[k] = s; return `<option value="${esc(k)}"></option>`; }).join("");
+      } catch (e) {}
+    }, 200);
+  });
+}
+wire("from", "stops-from"); wire("to", "stops-to");
+const spec = id => { const v = $(id).value.trim(); const m = v.match(/\[(\w+)\]$/); return m ? m[1] : v; };
+
+map.on("click", e => {
+  const v = e.latlng.lat.toFixed(5) + "," + e.latlng.lng.toFixed(5);
+  if (clicks % 2 === 0) { $("from").value = v; pins.clearLayers(); } else $("to").value = v;
+  L.marker(e.latlng).addTo(pins); clicks++;
+});
+
+/* ---- drawing ---- */
+function drawPath(path, levels, c, width) {
+  for (let i = 0; i < path.length - 1; i++) {
+    const lv = levels[i] || "unknown";
+    L.polyline([path[i], path[i+1]], {color: c[lv] || c.unknown, weight: width, opacity: lv === "unknown" ? .5 : .95, dashArray: lv === "unknown" ? "4 6" : null}).addTo(layer);
+  }
+}
+function drawOption(o) {
+  layer.clearLayers(); const c = COL(); let pts = [];
+  o.legs.forEach(l => {
+    drawPath(l.path, l.stretch_levels, c, 6); pts = pts.concat(l.path);
+    L.circleMarker([l.board.lat, l.board.lon], {radius: 7, color: "#fff", fillColor: "#1a5fd0", fillOpacity: 1, weight: 2}).bindTooltip(`Board ${l.route}: ${l.board.name}`).addTo(layer);
+    L.circleMarker([l.alight.lat, l.alight.lon], {radius: 7, color: "#fff", fillColor: "#333", fillOpacity: 1, weight: 2}).bindTooltip(`Get off: ${l.alight.name}`).addTo(layer);
+  });
+  if (pts.length) map.fitBounds(L.latLngBounds(pts), {padding: [40, 40]});
+}
+
+/* ---- planner ---- */
+let opts = [];
+function card(o, i) {
+  const cr = o.crowding;
+  const routes = o.legs.map((l, k) => (k ? `<span class="meta">then</span>` : "") + `<span class="chip">${esc(l.route)}</span>`).join(" ");
+  const later = o.leave_after_min ? `<div class="later">Leave ${o.leave_after_min} min later (${esc(o.leave_at)}) for a less crowded bus</div>` : "";
+  const legs = o.legs.map(l => `<div class="leg"><b>${esc(l.route)}</b> ${esc(l.board_time)} ${esc(l.board.name)} → ${esc(l.alight_time)} ${esc(l.alight.name)} · ${l.stops} stops, ${l.minutes_on_bus} min</div>`).join("");
+  return `<div class="card" data-i="${i}" tabindex="0" role="button" aria-label="Option ${i+1}">
+    <h3><span>${esc(o.leave_at)} → ${esc(o.arrive_at)} <span class="meta">· ${Math.round(o.total_minutes)} min</span></span>${badge(cr.level)}</h3>
+    <div class="chips">${routes}<span class="meta">${o.transfers ? o.transfers + " change" : "direct"}</span></div>
+    <div class="meta">Walk ${o.walk_to_first_min} min to the bus, ${o.walk_from_last_min} min at the end</div>
+    ${later}${legs}
+    <div class="conf">${esc(confText(cr.confidence))}${cr.crowded_share > 0 ? ` · ${Math.round(cr.crowded_share*100)}% of the ride is crowded` : ""}</div></div>`;
+}
+function select(i) {
+  document.querySelectorAll(".card").forEach(c => c.setAttribute("aria-current", c.dataset.i == i));
+  drawOption(opts[i]);
+}
+async function find() {
+  const out = $("results"); out.innerHTML = '<div class="note">Searching…</div>';
+  try {
+    const r = await api("/journeys", {from: spec("from"), to: spec("to"), depart: $("depart").value || "08:30",
+      weekend: $("day").value, prefer: document.querySelector("#prefer [aria-pressed=true]").dataset.v, limit: 5});
+    opts = r.options;
+    if (!opts.length) { out.innerHTML = `<div class="note">${esc(r.note || "No journeys found.")}</div>`; layer.clearLayers(); return; }
+    out.innerHTML = opts.map(card).join("") + `<div class="hint">${esc(r.disclaimer)}</div>`;
+    out.querySelectorAll(".card").forEach(c => { c.onclick = () => select(c.dataset.i); c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(c.dataset.i); } }; });
+    select(0);
+  } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+$("go").onclick = find;
+document.querySelectorAll("#prefer button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#prefer button").forEach(x => x.setAttribute("aria-pressed", x === b)); if ($("results").children.length) find();
+});
+$("ex1").onclick = () => { $("from").value = "2640"; $("to").value = "7930"; $("depart").value = "08:30"; find(); };
+$("ex2").onclick = () => { $("from").value = "267"; $("to").value = "28.5491,77.2518"; $("depart").value = "08:30"; find(); };
+
+/* ---- operators ---- */
+for (let h = 0; h < 24; h++) $("ohour").add(new Option(String(h).padStart(2, "0") + ":00", h, false, h === 18));
+async function ops() {
+  const out = $("oresults"); out.innerHTML = '<div class="note">Loading…</div>';
+  try {
+    const by = $("oby").value;
+    const r = await api("/heatmap", {hour: $("ohour").value, weekend: $("oday").value, min_confidence: $("oconf").value, by, limit: 25});
+    if (!r.items.length) { out.innerHTML = '<div class="note">No cells at this confidence level. Try a lower minimum.</div>'; return; }
+    const rows = r.items.map((x, i) => by === "route"
+      ? `<tr data-r="${esc(x.route)}"><td><b>${esc(x.route)}</b><div class="meta">worst: ${esc(x.worst_from)} → ${esc(x.worst_to)}</div></td><td>${badge(x.level)}</td><td>${x.riders_per_bus.toFixed(1)}</td><td>${Math.round(x.crowded_share*100)}%</td></tr>`
+      : `<tr data-r="${esc(x.route)}"><td><b>${esc(x.route)}</b><div class="meta">${esc(x.from_stop)} → ${esc(x.to_stop)}</div></td><td>${badge(x.level)}</td><td>${x.riders_per_bus.toFixed(1)}</td><td>${esc(x.confidence)}</td></tr>`).join("");
+    out.innerHTML = `<table><thead><tr><th>Route</th><th>Level</th><th>Riders/bus*</th><th>${by === "route" ? "Crowded" : "Conf."}</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="hint">*Riders per bus in the ticket sample, not a headcount. Sorted by relative crowding.</div>`;
+    out.querySelectorAll("tbody tr").forEach(tr => tr.onclick = () => { out.querySelectorAll("tr").forEach(x => x.classList.remove("sel")); tr.classList.add("sel"); showRoute(tr.dataset.r); });
+  } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+async function showRoute(route) {
+  try {
+    const r = await api("/crowding", {route, hour: $("ohour").value, weekend: $("oday").value});
+    layer.clearLayers(); const c = COL(); let pts = [];
+    r.stretches.forEach((s, i, a) => {
+      const nx = a[i+1]; const to = nx ? [nx.lat, nx.lon] : [s.lat, s.lon]; const from = [s.lat, s.lon]; pts.push(from);
+      L.polyline([from, to], {color: c[s.level] || c.unknown, weight: 6, opacity: .95}).bindTooltip(`${s.from_stop} → ${s.to_stop}: ${(LV[s.level]||LV.unknown).t} (${s.confidence} confidence)`).addTo(layer);
+    });
+    if (pts.length > 1) map.fitBounds(L.latLngBounds(pts), {padding: [40, 40]});
+  } catch (e) { $("oresults").insertAdjacentHTML("afterbegin", `<div class="err">${esc(e.message)}</div>`); }
+}
+$("ogo").onclick = ops;
+
+/* ---- shareable link: ?from=2640&to=7930&depart=08:30&weekend=false&prefer=fast ---- */
+(function () {
+  const q = new URLSearchParams(location.search);
+  if (q.get("tab") === "ops") { tab("ops"); ops(); return; }
+  if (!q.get("from") || !q.get("to")) return;
+  $("from").value = q.get("from"); $("to").value = q.get("to");
+  if (q.get("depart")) $("depart").value = q.get("depart");
+  if (q.get("weekend")) $("day").value = q.get("weekend");
+  if (q.get("prefer") === "comfort") document.querySelectorAll("#prefer button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === "comfort"));
+  find();
+})();
+
+/* ---- tabs ---- */
+function tab(which) {
+  $("plan").hidden = which !== "plan"; $("ops").hidden = which !== "ops";
+  $("tab-plan").setAttribute("aria-selected", which === "plan"); $("tab-ops").setAttribute("aria-selected", which === "ops");
+  layer.clearLayers();
+}
+$("tab-plan").onclick = () => tab("plan"); $("tab-ops").onclick = () => tab("ops");
+</script>
+</body>
+</html>
