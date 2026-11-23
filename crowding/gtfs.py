@@ -27,7 +27,7 @@ def load(gtfs_dir=GTFS_DIR):
 
 def route_stops(g) -> pd.DataFrame:
     """Ordered stops per route, taken from the trip with the most stops (the full-length pattern)."""
-    st = g["stop_times"].assign(seq=lambda x: x.stop_sequence.astype(int))
+    st = g["stop_times"].assign(seq=lambda x: x.stop_sequence.astype(int), dep_s=lambda x: _secs(x.departure_time))
     n = st.groupby("trip_id").size().rename("n")
     trips = g["trips"].join(n, on="trip_id").dropna(subset=["n"])
     best = trips.sort_values("n", ascending=False).drop_duplicates("route_id")[["route_id", "trip_id"]]
@@ -35,8 +35,23 @@ def route_stops(g) -> pd.DataFrame:
         g["routes"][["route_id", "route_short_name"]], on="route_id")
     rs = rs.sort_values(["route_short_name", "seq"])
     rs["pos"] = rs.groupby("route_short_name").cumcount()          # 0..n-1 position along the route
+    rs["offset_s"] = rs.dep_s - rs.groupby("route_short_name").dep_s.transform("first")   # scheduled seconds from first stop
     rs["stop_norm"] = rs.stop_name.map(norm_stop)
-    return rs[["route_short_name", "pos", "stop_id", "stop_name", "stop_norm", "stop_lat", "stop_lon"]]
+    return rs[["route_short_name", "pos", "stop_id", "stop_name", "stop_norm", "stop_lat", "stop_lon", "offset_s"]]
+
+
+def _secs(hms: pd.Series) -> pd.Series:
+    p = hms.str.split(":", expand=True).astype(int)
+    return p[0] * 3600 + p[1] * 60 + p[2]
+
+
+def trip_starts(g) -> pd.DataFrame:
+    """Scheduled first-stop departure (seconds) of every trip, with its route_short_name."""
+    st = g["stop_times"].assign(seq=lambda x: x.stop_sequence.astype(int))
+    first = st.sort_values("seq").drop_duplicates("trip_id")[["trip_id", "departure_time"]]
+    first["start_s"] = _secs(first.departure_time)
+    return first.merge(g["trips"][["trip_id", "route_id"]], on="trip_id").merge(
+        g["routes"][["route_id", "route_short_name"]], on="route_id")[["route_short_name", "start_s"]]
 
 
 def trips_per_hour(g) -> pd.DataFrame:
