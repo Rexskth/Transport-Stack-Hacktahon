@@ -36,10 +36,10 @@ routes, stops = open_table("routes"), open_table("stops")
 tix = pd.read_csv("data/raw/October-Delhi.csv", usecols=["route", "start_stop_name"], dtype=str) \
     if pathlib.Path("data/raw/October-Delhi.csv").exists() else None
 if tix is not None:
-    tr = set(tix.route.str.replace(r"(UP|DOWN)$", "", regex=True).unique())
-    for col in [c for c in ("route_id", "route_short_name", "route_long_name") if c in routes.columns]:
-        hit = len(tr & set(routes[col].str.upper().str.replace(" ", "")))
-        print(f"ticket route base matches routes.{col}: {hit}/{len(tr)}")
+    tr = set(tix.route.unique())   # full ticket route, e.g. 717AUP == GTFS route_short_name
+    for col in [c for c in ("route_id", "route_short_name") if c in routes.columns]:
+        hit = len(tr & set(routes[col]))
+        print(f"ticket routes equal to routes.{col}: {hit}/{len(tr)}")
     sn = set(tix.start_stop_name.str.lower().str.strip().unique())
     gs = set(stops.stop_name.str.lower().str.strip())
     print(f"ticket start stops exactly in stops.stop_name: {len(sn & gs)}/{len(sn)}")
