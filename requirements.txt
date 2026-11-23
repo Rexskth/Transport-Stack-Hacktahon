@@ -1,7 +1,8 @@
-pandas>=2.2
-numpy
-fastapi
-uvicorn
-matplotlib
-pytest
-httpx
+# Versions below are the ones the project was built and tested with (Python 3.13).
+pandas==3.1.1
+numpy==2.5.5
+fastapi==0.165.0
+uvicorn==0.54.0
+matplotlib==3.11.2
+pytest==9.2.0
+httpx==0.28.1
