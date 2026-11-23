@@ -1,2 +1,13 @@
 # Transport-Stack-Hacktahon
-Build open-source tools for buses and metro.
+Crowdedness-aware journey planner (Problem 2, Transport Stack Hackathon 2026).
+
+- Implementation plan and work split: [PLAN.md](PLAN.md)
+- Data notes: [data_README](data_README)
+
+Quick start:
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+unzip October-Delhi.csv.zip -d data/raw/
+python run_pipeline.py data/raw/October-Delhi.csv
+```

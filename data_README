@@ -1,0 +1,71 @@
+# Transport Stack Hackathon 2026 — October 2026 data
+
+Two datasets for Delhi buses, covering 1–31 October 2026.
+
+| File | What it is | Size |
+|---|---|---:|
+| `delhi-dtc-bus-gtfs-rt-2026-10.7z` | Bus GPS: decoded GTFS-Realtime vehicle positions for DTC buses. 31 daily SQLite databases. | 16.1 GB (124 GB unpacked) |
+| `October-Delhi.csv.zip` | Bus e-ticketing records (ONDC). One CSV, about 2.56 million tickets. | 66 MB (290 MB unpacked) |
+| `SHA256SUMS` | Checksums to verify your downloads. | |
+
+Large downloads can drop. Use a client that resumes, for example `curl -C - -O <url>`.
+
+Verify:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+```
+
+## Bus GPS (`delhi-dtc-bus-gtfs-rt-2026-10.7z`)
+
+The archive holds one SQLite database per day, named `bus_movements_YYYY_MM_DD.db`. It is non-solid, so you can extract a single day:
+
+```bash
+7z l delhi-dtc-bus-gtfs-rt-2026-10.7z                         # list days
+7z x delhi-dtc-bus-gtfs-rt-2026-10.7z bus_movements_2026_10_15.db
+```
+
+Each database has one table:
+
+```sql
+CREATE TABLE vehicle_feed (
+  vehicle_id TEXT,  -- bus registration, e.g. DL1PD8979
+  lat        TEXT,  -- latitude (WGS84), stored as text
+  lng        TEXT,  -- longitude (WGS84), stored as text
+  speed      REAL,  -- speed as reported by the feed
+  route_id   REAL,  -- route identifier, stored as a float
+  trip_id    TEXT,  -- trip identifier assigned by the Transport Stack pipeline
+  timestamp  TEXT,  -- observation time, Unix epoch seconds (UTC)
+  date       DATE,  -- date (IST)
+  time       TEXT   -- clock time (IST)
+);
+```
+
+DTC buses only. The databases have no indexes; add your own if you need them. The feed is raw: expect duplicates, gaps and GPS noise.
+
+## Ticketing (`October-Delhi.csv.zip`)
+
+One CSV with these columns:
+
+| Column | Example |
+|---|---|
+| `passenger_count` | `1` |
+| `amount` | `"22"` |
+| `vehicle_number` | `DL1PD6826` (blank, `NULL`, on about half the rows) |
+| `ticket_type_id` | `1` |
+| `end_stop_name` | `Mahamaya Flyover West` |
+| `route` | `8UP` |
+| `start_stop_name` | `Ali Village` |
+| `created_at` | `2026-10-28 10:19:18.780611+05:30` |
+| `is_ac` | `True` |
+
+## Static GTFS
+
+Routes, stops and schedules for Delhi buses are available from Transport Stack at https://delhi.transportstack.in.
+
+## Source
+
+Transport Stack / IIIT Delhi. Bus GPS is derived from the DTC bus AVL feed. Ticketing is from ONDC e-ticketing.
+
+Questions: csm@iiitd.ac.in
+
