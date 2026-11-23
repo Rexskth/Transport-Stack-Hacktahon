@@ -67,7 +67,9 @@ Write `crowding/validate.py` that outputs numbers and charts for the note:
 - Anomalous days: report 2 Oct and 18 Oct, and decide whether to exclude them.
 - Where estimates are least reliable (share of low-confidence cells, by hour and by route).
 
-### WP3: GTFS integration (A, ~2 h, **blocked until data arrives**)
+### WP3: GTFS integration (A, ~2 h)
+**GTFS was received by email (sent to both teammates).** Save the files, or the single zip, in `data/gtfs/` (gitignored; do not commit). Then run `python scripts/check_gtfs.py`, which lists which files are present and how well ticket routes and stop names match the feed. Paste its output into the team chat before starting WP3, since it decides how much fuzzy matching is needed.
+
 Files: `stops.txt`, `routes.txt`, `trips.txt`, `stop_times.txt`, `calendar*.txt`, optionally `shapes.txt`.
 1. `crowding/gtfs.py` loads the feed.
 2. Replace `stop_order.infer_orders` with GTFS stop order per route+direction. Keep the inferred version as a fallback.

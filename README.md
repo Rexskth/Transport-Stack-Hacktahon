@@ -11,3 +11,5 @@ pip install -r requirements.txt
 unzip October-Delhi.csv.zip -d data/raw/
 python run_pipeline.py data/raw/October-Delhi.csv
 ```
+
+GTFS (received by email): put the files or the zip in `data/gtfs/`, then run `python scripts/check_gtfs.py`.
