@@ -7,6 +7,7 @@ Findings that shape this module:
 - trip_id embeds departure time ('1_FULL_06_05'); we use stop_times instead.
 """
 import difflib
+import html
 import pathlib
 import pandas as pd
 from .clean import norm_stop
@@ -17,9 +18,11 @@ GTFS_DIR = pathlib.Path("data/gtfs")
 def load(gtfs_dir=GTFS_DIR):
     d = pathlib.Path(gtfs_dir)
     rd = lambda n, **k: pd.read_csv(d / f"{n}.txt", dtype=str, **k)
+    stops = rd("stops").astype({"stop_lat": float, "stop_lon": float})
+    stops["stop_name"] = stops.stop_name.map(html.unescape)       # the feed contains '&amp;' in some names
     return {
         "routes": rd("routes"),
-        "stops": rd("stops").astype({"stop_lat": float, "stop_lon": float}),
+        "stops": stops,
         "trips": rd("trips"),
         "stop_times": rd("stop_times", usecols=["trip_id", "departure_time", "stop_id", "stop_sequence"]),
     }

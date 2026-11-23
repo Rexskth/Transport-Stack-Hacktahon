@@ -6,7 +6,9 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 
+from fastapi.staticfiles import StaticFiles
 from crowding import config as C
+from crowding.planner import Planner
 from .store import Store, CONF_RANK, level_from_index
 
 state: dict = {}
@@ -15,6 +17,8 @@ state: dict = {}
 @asynccontextmanager
 async def lifespan(app):
     state["store"] = Store()
+    state["planner"] = Planner(pd.read_csv("data/processed/route_stops.csv", dtype={"stop_id": str}),
+                               pd.read_csv("data/processed/trip_starts.csv"), state["store"].cells)
     yield
 
 
@@ -147,3 +151,50 @@ def stops(q: str = Query(..., min_length=2, description="Substring of the stop n
     s = store().stop_index
     m = s[s.key.str.contains(q.lower(), regex=False)].sort_values("routes", ascending=False).head(limit)
     return {"count": len(m), "stops": _clean(m[["stop_id", "stop_name", "stop_lat", "stop_lon", "routes"]])}
+
+
+def _hhmm(t: str) -> int:
+    try:
+        h, m = t.split(":")
+        h, m = int(h), int(m)
+        assert 0 <= h < 24 and 0 <= m < 60
+    except Exception:
+        raise HTTPException(422, "depart must be HH:MM, 24-hour")
+    return h * 3600 + m * 60
+
+
+def _json_safe(o):
+    if isinstance(o, dict):
+        return {k: _json_safe(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_json_safe(v) for v in o]
+    if isinstance(o, np.generic):
+        return o.item()
+    return o
+
+
+@app.get("/journeys")
+def journeys(from_: str = Query(..., alias="from", description="Origin: a GTFS stop_id (see /stops) or 'lat,lon'"),
+             to: str = Query(..., description="Destination: a GTFS stop_id or 'lat,lon'"),
+             depart: str = Query("08:30", description="Departure time HH:MM (IST)"),
+             weekend: bool = Weekend,
+             prefer: Literal["fast", "comfort"] = Query("fast", description="fast: shortest total time. comfort: least crowded first, then time"),
+             limit: int = Query(5, ge=1, le=10)):
+    """Bus journeys (direct or one transfer) with scheduled times and a crowding level for each option.
+
+    Travel times come from the GTFS timetable, not live traffic. Options that leave 20 or 40 minutes later
+    appear only when they are less crowded than leaving now."""
+    try:
+        r = state["planner"].journeys(from_, to, _hhmm(depart), weekend, prefer, limit)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    r.update({"depart": depart, "weekend": weekend, "prefer": prefer,
+              "note": None if r["options"] else "no scheduled bus journey found at this time (service may have ended)",
+              "disclaimer": "Times follow the schedule, not live traffic. Crowding is a relative level from October ticket data; check confidence."})
+    return _json_safe(r)
+
+
+# Demo UI (web/index.html). Mounted last so it does not shadow the API routes.
+import pathlib
+if pathlib.Path("web").exists():
+    app.mount("/", StaticFiles(directory="web", html=True), name="web")
