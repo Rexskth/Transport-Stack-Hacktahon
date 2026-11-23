@@ -160,6 +160,6 @@ Phase 1 asks for a **proposal, a working prototype and a code repo URL**. Make s
 | 3. Validation (WP2) | `phase-3-validation` | Done: `python -m crowding.validate` -> `reports/validation.md` (+2 PNGs) |
 | 4. API (WP4) | `phase-4-api` | Done: `uvicorn api.main:app` (`/meta /routes /crowding /heatmap /stops`), 7 tests. `/journeys` moves to phase 5 |
 | 5. Planner + UI (WP5, WP6) | `phase-5-planner-ui` | Done: `/journeys` + `web/index.html` (planner and operator view); 11 tests |
-| 6. Note + packaging (WP7, WP8) | | Next |
+| 6. Note + packaging (WP7, WP8) | `phase-6-note-packaging` | Done: `NOTE.md`, `SUBMISSION.md`, `scripts/run_all.sh`, pinned requirements, clean-clone run verified (1 min 48 s) |
 
 GTFS facts learned in phase 1: ticket `route` equals GTFS `route_short_name`; there is no `direction_id` (UP/DOWN are separate routes); `calendar.txt` has one service for every day, so scheduled frequency does not differ by weekday/weekend; GTFS names often join variants with " / " while tickets use one part, so matching uses segments and prefixes.

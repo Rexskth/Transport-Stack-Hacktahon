@@ -196,6 +196,8 @@ async function find() {
     const r = await api("/journeys", {from: spec("from"), to: spec("to"), depart: $("depart").value || "08:30",
       weekend: $("day").value, prefer: document.querySelector("#prefer [aria-pressed=true]").dataset.v, limit: 5});
     opts = r.options;
+    for (const [id, o] of [["from", r.origin[0]], ["to", r.destination[0]]])       // show names instead of raw stop ids
+      if (o && /^\w+$/.test($(id).value.trim())) $(id).value = `${o.name} [${o.stop_id}]`;
     if (!opts.length) { out.innerHTML = `<div class="note">${esc(r.note || "No journeys found.")}</div>`; layer.clearLayers(); return; }
     out.innerHTML = opts.map(card).join("") + `<div class="hint">${esc(r.disclaimer)}</div>`;
     out.querySelectorAll(".card").forEach(c => { c.onclick = () => select(c.dataset.i); c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(c.dataset.i); } }; });
