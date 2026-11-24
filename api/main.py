@@ -5,6 +5,7 @@ from typing import Literal, Optional
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi.staticfiles import StaticFiles
 from crowding import config as C
@@ -30,6 +31,10 @@ app = FastAPI(
                  "not headcounts. Always read `confidence`: most cells have thin data."),
     lifespan=lifespan,
 )
+# The React dev server (npm run dev, port 3000) calls this API on port 8000. Read-only API, so GET from anywhere is fine.
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+                   allow_methods=["GET"], allow_headers=["*"])
+
 Hour = Query(..., ge=0, le=23, description="Hour of day, 0-23 (IST)")
 Weekend = Query(False, description="True for weekend or holiday-like days")
 MinConf = Query("low", description="Minimum confidence to include: low, medium or high")
@@ -142,6 +147,26 @@ def heatmap(hour: int = Hour, weekend: bool = Weekend, min_confidence: str = Min
         items = _clean(g)
     return {"hour": hour, "weekend": weekend, "min_confidence": min_confidence, "by": by,
             "count": len(items), "items": items}
+
+
+@app.get("/network/hourly")
+def network_hourly(weekend: bool = Weekend, min_confidence: str = Query("medium", description="low, medium or high")):
+    """When is the network crowded? Per hour: share of route-stretch cells at each level and the mean index,
+    using only cells at or above the confidence level. Levels are relative (percentiles), so the shares show
+    how crowding is spread across the day, not absolute loads."""
+    k = _check_conf(min_confidence)
+    c = store().cells
+    c = c[(c.is_weekend == weekend) & (c.conf_rank >= k)]
+    g = c.groupby("hour", observed=True)
+    out = pd.DataFrame({
+        "cells": g.size(),
+        "mean_index": g["index"].mean(),
+        "seats_share": g["level"].apply(lambda s: (s == C.LEVEL_NAMES[0]).mean()),
+        "standing_share": g["level"].apply(lambda s: (s == C.LEVEL_NAMES[1]).mean()),
+        "crowded_share": g["level"].apply(lambda s: (s == C.LEVEL_NAMES[2]).mean()),
+    }).reindex(range(24)).reset_index().rename(columns={"index": "hour"})
+    out["cells"] = out.cells.fillna(0).astype(int)
+    return {"weekend": weekend, "min_confidence": min_confidence, "hours": _clean(out)}
 
 
 @app.get("/stops")
